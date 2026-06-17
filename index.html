@@ -1072,15 +1072,24 @@
         </div>
     </div>
 
-    <!-- SERVER-INJECTED FIREBASE CONFIG -->
-    <script>/* __FIREBASE_CONFIG_INJECTION__ */</script>
-
+    <!-- FIREBASE CONFIG -->
     <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-const appId = typeof __app_id !== 'undefined' ? __app_id : (window.__app_id || 'sgnccs-shared-branch');
+// Your web app's Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDfdFrqlx61v5dhUmug4aYkvb7K70geQn8",
+    authDomain: "dd-sgnccs.firebaseapp.com",
+    projectId: "dd-sgnccs",
+    storageBucket: "dd-sgnccs.firebasestorage.app",
+    messagingSenderId: "104849393287",
+    appId: "1:104849393287:web:28cf2761b8015f76f45a22"
+};
+
+// Fixed namespace for this deployment's Firestore documents (artifacts/{appId}/public/data/...)
+const appId = 'sgnccs-shared-branch';
 
 // FIX: Admin credentials removed from client JS.
 // Store them securely on the server or in Firebase Auth with custom claims.
@@ -1269,44 +1278,33 @@ function getTodayString() {
 }
 
 async function initializeStorage() {
-    let configToUse = null;
-    const globalConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : (window.__firebase_config || null);
-    if (globalConfig) {
-        try { configToUse = typeof globalConfig === 'string' ? JSON.parse(globalConfig) : globalConfig; }
-        catch(e) { console.error("Firebase config parse error"); }
-    }
-    if (configToUse && configToUse.apiKey) {
-        try {
-            const app = initializeApp(configToUse);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : (window.__initial_auth_token || null);
-            const credential = token ? await signInWithCustomToken(auth, token) : await signInAnonymously(auth);
-            activeUser = credential.user;
-            if (activeUser) {
-                isFirebaseActive = true;
-                updateSyncStatusUI(true);
-                listenToLiveSync();
-                const publicAccountsRef = collection(db, 'artifacts', appId, 'public', 'data', 'accounts');
-                if (unsubscribeAccounts) unsubscribeAccounts();
-                unsubscribeAccounts = onSnapshot(publicAccountsRef, (snapshot) => {
-                    accounts = [];
-                    snapshot.forEach(d => accounts.push({ id: d.id, ...d.data() }));
-                    renderAccountsList();
-                    populateAccountDropdowns();
-                });
-            } else {
-                isFirebaseActive = false; updateSyncStatusUI(false); loadLocalFallback();
-            }
-            onAuthStateChanged(auth, (user) => {
-                if (user) { activeUser = user; isFirebaseActive = true; updateSyncStatusUI(true); }
-                else { activeUser = null; isFirebaseActive = false; updateSyncStatusUI(false); loadLocalFallback(); }
+    try {
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        const credential = await signInAnonymously(auth);
+        activeUser = credential.user;
+        if (activeUser) {
+            isFirebaseActive = true;
+            updateSyncStatusUI(true);
+            listenToLiveSync();
+            const publicAccountsRef = collection(db, 'artifacts', appId, 'public', 'data', 'accounts');
+            if (unsubscribeAccounts) unsubscribeAccounts();
+            unsubscribeAccounts = onSnapshot(publicAccountsRef, (snapshot) => {
+                accounts = [];
+                snapshot.forEach(d => accounts.push({ id: d.id, ...d.data() }));
+                renderAccountsList();
+                populateAccountDropdowns();
             });
-        } catch(err) {
-            console.error("Firebase init failed:", err);
+        } else {
             isFirebaseActive = false; updateSyncStatusUI(false); loadLocalFallback();
         }
-    } else {
+        onAuthStateChanged(auth, (user) => {
+            if (user) { activeUser = user; isFirebaseActive = true; updateSyncStatusUI(true); }
+            else { activeUser = null; isFirebaseActive = false; updateSyncStatusUI(false); loadLocalFallback(); }
+        });
+    } catch(err) {
+        console.error("Firebase init failed:", err);
         isFirebaseActive = false; updateSyncStatusUI(false); loadLocalFallback();
     }
 }
