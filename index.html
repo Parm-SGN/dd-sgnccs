@@ -1076,7 +1076,7 @@
     <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import { initializeFirestore, doc, setDoc, updateDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -1281,7 +1281,10 @@ async function initializeStorage() {
     try {
         const app = initializeApp(firebaseConfig);
         auth = getAuth(app);
-        db = getFirestore(app);
+        db = initializeFirestore(app, {
+            experimentalForceLongPolling: true,
+            useFetchStreams: false
+        });
         const credential = await signInAnonymously(auth);
         activeUser = credential.user;
         if (activeUser) {
